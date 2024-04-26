@@ -75,12 +75,12 @@ class Subcluster:
         if self.centroid is None:
             self.centroid = vector
         else:
-            # self.centroid = (self.vector_count - 1) / \
-            #                 self.vector_count * self.centroid \
-            #                 + vector / self.vector_count
+            self.centroid = (self.vector_count - 1) / \
+                            self.vector_count * self.centroid \
+                            + vector / self.vector_count
 
-            for i in range(len(self.centroid)):
-                self.centroid[i] = (self.vector_count - 1) / self.vector_count * self.centroid[i] + vector[i] / self.vector_count
+            # for i in range(len(self.centroid)):
+            #     self.centroid[i] = (self.vector_count - 1) / self.vector_count * self.centroid[i] + vector[i] / self.vector_count
             
             # self.centroid = [[(self.vector_count - 1) / self.vector_count * n + m / self.vector_count for m in second] for n, second in zip(vector, self.centroid)]
         
@@ -176,8 +176,8 @@ class Cluster:
         }
     def merge_subclusters(self, sc_idx1, sc_idx2, delete_merged: bool = True):
         """Merge subcluster_merge into self. Update centroids."""
-        sc_1 = self.subclusters(sc_idx1)
-        sc_2 = self.subclusters(sc_idx2)
+        sc_1 = self.subclusters[sc_idx1]
+        sc_2 = self.subclusters[sc_idx2]
         if sc_1.store_vectors:
             sc_1.vectors += sc_2.vectors
 
