@@ -41,10 +41,10 @@ class TestLinksCluster:
         assert isinstance(self.cluster, LinksCluster)
 
     def test_predict_once(self):
-        """Test that first prediction returns 0."""
+        """Test that first prediction returns None."""
         vector = np.random.random((self.vector_dim, ))
         prediction = self.cluster.predict(vector)
-        assert prediction == 0
+        assert prediction is None
         assert vector in self.cluster.get_all_vectors()
 
     def test_predict_many(self):
