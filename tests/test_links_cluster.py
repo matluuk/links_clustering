@@ -4,7 +4,7 @@
 import numpy as np
 import random
 
-from links_cluster import LinksCluster, Subcluster
+from links_cluster import LinksCluster, Subcluster, CONVERSATION_TRASHOLD
 
 
 class TestLinksCluster:
@@ -152,6 +152,23 @@ class TestLinksCluster:
         assert len(self.cluster.clusters) == 1
         assert len(self.cluster.clusters[0].subclusters) == 2
 
+        # Edit current conversation times
+        self.cluster.clusters[0].subclusters[0].current_conversation = {
+            "start_time": 1,
+            "end_time": 3,
+            "duration": 2,
+        }
+        self.cluster.clusters[0].subclusters[1].current_conversation = {
+            "start_time": 2,
+            "end_time": 4,
+            "duration": 2,
+        }
+        current_conversation_merged = {
+            "start_time": 1,
+            "end_time": 4,
+            "duration": 3,
+        }
+
         # Merge subclusters and test for correctness
         self.cluster.merge_subclusters(0, 0, 1)
         assert len(self.cluster.clusters) == 1
@@ -161,6 +178,9 @@ class TestLinksCluster:
         np.testing.assert_array_almost_equal(
             self.cluster.clusters[0].subclusters[0].centroid,
             np.mean([vector, vector2], axis=0))
+        
+        # Test conversation times
+        assert self.cluster.clusters[0].subclusters[0].current_conversation == current_conversation_merged
 
     def test_get_all_vectors(self):
         """Test that get_all_vectors returns all vectors."""
@@ -224,7 +244,111 @@ class TestLinksCluster:
         
         self.cluster.clusters[0].calculate_time_info()
 
-        assert conversation_list_merged == self.cluster.clusters[0].conversations
+        convs = self.cluster.clusters[0].conversations
+        convs_sorted = sorted(convs, key=lambda x: x["start_time"])
+        assert convs == convs_sorted
+        for i in range(1, len(convs)):
+            assert convs[i]["start_time"] > convs[i + 1]["end_time"] + CONVERSATION_TRASHOLD
+    
+    def test_merge_subclusters_times_overlapping(self):
+        """
+        Test that merging subclusters works as expected with 
+        current conversations, that are overlapping.
+        """
+        vector = self.random_vec()
+        vector[0] += 1000.0
+        first_prediction = self.cluster.predict(vector)
+        vector2 = self.rotate_vec(
+            vector,
+            1.01 * np.arccos(self.subcluster_similarity_threshold))
+        second_prediction = self.cluster.predict(vector2)
+        # These asserts test that we have created 2 subclusters in the same cluster
+        # assert first_prediction == second_prediction
+        assert len(self.cluster.clusters) == 1
+        assert len(self.cluster.clusters[0].subclusters) == 2
+
+        # Edit current conversation times
+        self.cluster.clusters[0].subclusters[0].current_conversation = {
+            "start_time": 1,
+            "end_time": 3,
+            "duration": 2,
+        }
+        self.cluster.clusters[0].subclusters[1].current_conversation = {
+            "start_time": 2,
+            "end_time": 4,
+            "duration": 2,
+        }
+        current_conversation_merged = {
+            "start_time": 1,
+            "end_time": 4,
+            "duration": 3,
+        }
+
+        # Merge subclusters and test for correctness
+        self.cluster.merge_subclusters(0, 0, 1)
+        assert len(self.cluster.clusters) == 1
+        assert len(self.cluster.clusters[0].subclusters) == 1
+        assert self.cluster.clusters[0].subclusters[0].vector_count == 2
+        assert len(self.cluster.clusters[0].subclusters[0].vectors) == 2
+        np.testing.assert_array_almost_equal(
+            self.cluster.clusters[0].subclusters[0].centroid,
+            np.mean([vector, vector2], axis=0))
+        
+        # Test conversation times
+        assert self.cluster.clusters[0].subclusters[0].current_conversation == current_conversation_merged
+        
+    def test_merge_subclusters_times_non_overlapping(self):
+        """
+        Test that merging subclusters works as expected with 
+        current conversations, that are not overlapping.
+        """
+        vector = self.random_vec()
+        vector[0] += 1000.0
+        first_prediction = self.cluster.predict(vector)
+        vector2 = self.rotate_vec(
+            vector,
+            1.01 * np.arccos(self.subcluster_similarity_threshold))
+        second_prediction = self.cluster.predict(vector2)
+        # These asserts test that we have created 2 subclusters in the same cluster
+        # assert first_prediction == second_prediction
+        assert len(self.cluster.clusters) == 1
+        assert len(self.cluster.clusters[0].subclusters) == 2
+
+        # Edit current conversation times
+        self.cluster.clusters[0].subclusters[0].current_conversation = {
+            "start_time": 1,
+            "end_time": 3,
+            "duration": 2,
+        }
+        self.cluster.clusters[0].subclusters[1].current_conversation = {
+            "start_time": 200,
+            "end_time": 400,
+            "duration": 200,
+        }
+        conversations = [{
+            "start_time": 1,
+            "end_time": 3,
+            "duration": 2,
+        }]
+        current_conversation_merged = {
+            "start_time": 200,
+            "end_time": 400,
+            "duration": 200,
+        }
+
+        # Merge subclusters and test for correctness
+        self.cluster.merge_subclusters(0, 0, 1)
+        assert len(self.cluster.clusters) == 1
+        assert len(self.cluster.clusters[0].subclusters) == 1
+        assert self.cluster.clusters[0].subclusters[0].vector_count == 2
+        assert len(self.cluster.clusters[0].subclusters[0].vectors) == 2
+        np.testing.assert_array_almost_equal(
+            self.cluster.clusters[0].subclusters[0].centroid,
+            np.mean([vector, vector2], axis=0))
+        
+        # Test conversation times
+        assert self.cluster.clusters[0].subclusters[0].current_conversation == current_conversation_merged
+        assert self.cluster.clusters[0].subclusters[0].conversations == conversations
 
 
 class TestSubcluster:
