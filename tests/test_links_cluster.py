@@ -2,6 +2,7 @@
 # pylint: disable=W0201, E1101
 
 import numpy as np
+import random
 
 from links_cluster import LinksCluster, Subcluster
 
@@ -174,6 +175,56 @@ class TestLinksCluster:
         large_k = 2 ** 25
         thresh = self.cluster.sim_threshold(large_k, large_k)
         assert np.abs(thresh - 1.0) < 1.0e-6
+
+    def test_calculate_time_info(self):
+        """Test cluster calculate_time_info function"""
+        vector = self.random_vec()
+        vector[0] += 1000.0
+        first_prediction = self.cluster.predict(vector)
+        vector2 = self.rotate_vec(
+            vector,
+            1.01 * np.arccos(self.subcluster_similarity_threshold))
+        second_prediction = self.cluster.predict(vector2)
+        # assert first_prediction == second_prediction
+        assert len(self.cluster.clusters) == 1
+        assert len(self.cluster.clusters[0].subclusters) == 2  # New subcluster created.
+
+        times = random.sample(range(30000), 400)
+        times.sort()
+        start_times = times[::4]
+        start_times_2 = times[1::4]
+        end_times = times[2::4]
+        end_times_2 = times[3::4]
+
+        assert len(start_times) == len(start_times_2) == len(end_times) == len(end_times_2)
+        
+        conversation_list = []
+        conversation_list_2 = []
+        conversation_list_merged = []
+        for i in range(len(start_times)):
+            conversation_list.append({
+                "start_time": start_times[i],
+                "end_time": end_times[i],
+                "duration": end_times[i] - start_times[i],
+            })
+            conversation_list_2.append({
+                "start_time": start_times_2[i],
+                "end_time": end_times_2[i],
+                "duration": end_times_2[i] - start_times_2[i],
+            })
+            conversation_list_merged.append({
+                "start_time": start_times[i],
+                "end_time": end_times_2[i],
+                "duration": end_times_2[i] - start_times[i],
+            })
+
+
+        self.cluster.clusters[0].subclusters[0].conversations = conversation_list
+        self.cluster.clusters[0].subclusters[1].conversations = conversation_list_2
+        
+        self.cluster.clusters[0].calculate_time_info()
+
+        assert conversation_list_merged == self.cluster.clusters[0].conversations
 
 
 class TestSubcluster:

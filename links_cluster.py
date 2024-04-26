@@ -15,6 +15,10 @@ from scipy.spatial.distance import cosine
 
 class Subcluster:
     """Class for subclusters and edges between subclusters."""
+
+    CONVERSATION_TRASHOLD = 30
+    MINIMUM_CONVERSATION_LENGTH = 1
+
     def __init__(self, initial_vector: np.ndarray, store_vectors: bool=False, logger=logging.getLogger()):
         self.id = str(uuid.uuid4())
         self.logger = logger
@@ -86,14 +90,14 @@ class Subcluster:
         
         # Update time, when seen
         now = time.time()
-        if now - self.last_seen <= 30:
+        if now - self.last_seen <= self.CONVERSATION_TRASHOLD:
             # Determine, that conversation is still going
             self.current_conversation["end_time"] = now 
             self.current_conversation["duration"] = self.current_conversation["end_time"] - self.current_conversation["start_time"]
             self.total_time_on_camera += now - self.last_seen
         else:
             # last conversation is ended -> start new one
-            if self.current_conversation["duration"] > 5:
+            if self.current_conversation["duration"] > self.MINIMUM_CONVERSATION_LENGTH:
                 # Save prevous conversation
                 self.conversations.append(self.current_conversation)
             self.current_conversation = {
@@ -158,6 +162,7 @@ class Cluster:
         self.id = str(uuid.uuid4())
 
         # TODO: Add time metrics
+        self.conversations: List[Dict] = []
 
     @classmethod
     def from_dict(cls, dict, logger=logging.getLogger()):
@@ -203,6 +208,28 @@ class Cluster:
 
         if delete_merged:
             del sc_2
+
+    def calculate_time_info(self):
+        """
+        Calculate conversation times from subclusters conversation info!
+        """
+        conversations = []
+        # current_conversations = []
+        for sc in self.subclusters:
+            conversations.extend(sc.conversations)
+            # current_conversations.append(sc.current_conversation)
+        conversations = sorted(conversations, key=lambda x: x["start_time"])
+    
+        merged = []
+        for conv in conversations:
+            if not merged or conv["start_time"] > merged[-1]["end_time"]:
+                # No overlap, add directly
+                merged.append(conv)
+            else:
+                # Overlap, update end time
+                merged[-1]["end_time"] = max(merged[-1]["end_time"], conv["end_time"])
+                merged[-1]["duration"] = merged[-1]["end_time"] - merged[-1]["start_time"]
+        self.conversations = merged
 
 class LinksCluster:
     """An online clustering algorithm."""
