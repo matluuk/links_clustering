@@ -237,7 +237,7 @@ class Cluster:
         """
         Calculate conversation times from subclusters conversation info!
         """
-        self.__combine_conversation_lists([sc.conversations for sc in self.subclusters])
+        self.conversations = self.__combine_conversation_lists([sc.conversations for sc in self.subclusters])
 
     @staticmethod
     def __combine_conversation_lists(conversation_lists: list):

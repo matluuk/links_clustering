@@ -246,9 +246,10 @@ class TestLinksCluster:
 
         convs = self.cluster.clusters[0].conversations
         convs_sorted = sorted(convs, key=lambda x: x["start_time"])
+        assert convs != []
         assert convs == convs_sorted
         for i in range(1, len(convs)):
-            assert convs[i]["start_time"] > convs[i + 1]["end_time"] + CONVERSATION_TRASHOLD
+            assert convs[i]["start_time"] > convs[i - 1]["end_time"] + CONVERSATION_TRASHOLD
     
     def test_merge_subclusters_times_overlapping(self):
         """
