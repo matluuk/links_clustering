@@ -174,6 +174,7 @@ class Cluster:
             "id": self.id,
             "subclusters" : [subcluster.as_dict() for subcluster in self.subclusters],
         }
+
     def merge_subclusters(self, sc_idx1, sc_idx2, delete_merged: bool = True):
         """Merge subcluster_merge into self. Update centroids."""
         sc_1 = self.subclusters[sc_idx1]
