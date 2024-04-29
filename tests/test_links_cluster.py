@@ -1,10 +1,15 @@
-"""Tests for LinksCluster and LinksSubcluster classes."""
+"""
+Tests for LinksCluster and LinksSubcluster classes.
+
+LinksCluster original source:
+https://github.com/QEDan/links_clustering/tree/master
+"""
 # pylint: disable=W0201, E1101
 
 import numpy as np
 import random
 
-from links_cluster import LinksCluster, Subcluster, CONVERSATION_TRESHOLD
+from links_cluster import LinksCluster, Cluster, Subcluster, CONVERSATION_TRESHOLD
 
 
 class TestLinksCluster:
@@ -404,30 +409,64 @@ class TestSubcluster:
             expected_centroid,
             decimal=12)
 
-    def test_merge(self):
+class TestCluster:
+    def setup_method(self):
+        """Setup for tests."""
+        self.vector_dim = 256
+        self.initial_vector = self.random_vec()
+        subcluster = Subcluster(self.initial_vector, store_vectors=True)
+        self.cluster = Cluster(subcluster)
+
+    def random_vec(self):
+        """Generate random vector of the correct shape."""
+        return np.random.random((self.vector_dim))
+
+    def test_init(self):
+        """Test basic class initialization properties."""
+        assert isinstance(self.cluster, Cluster)
+        assert len(self.cluster.subclusters) == 1
+        assert isinstance(self.cluster.subclusters[0], Subcluster)
+
+    def test_merge_subclusters(self):
         """Test that subclusters can be merged."""
         new_vector = self.random_vec()
         new_subcluster = Subcluster(new_vector, store_vectors=True)
-        self.subcluster.connected_subclusters.add(new_subcluster)
-        new_subcluster.connected_subclusters.add(self.subcluster)
-        self.subcluster.merge(new_subcluster)
-        assert self.subcluster.vector_count == 2
-        assert len(self.subcluster.vectors) == 2
+        self.cluster.add_subcluster(new_subcluster)
 
-    def test_merge_connections(self):
+        self.cluster.subclusters[0].connected_subclusters.add(new_subcluster)
+        new_subcluster.connected_subclusters.add(self.cluster.subclusters[0])
+
+        assert len(self.cluster.subclusters) == 2
+        assert self.cluster.subclusters[0].vector_count == 1
+        assert len(self.cluster.subclusters[0].vectors) == 1
+        assert self.cluster.subclusters[1].vector_count == 1
+        assert len(self.cluster.subclusters[1].vectors) == 1
+
+        self.cluster.merge_subclusters(0, 1)
+        assert len(self.cluster.subclusters) == 1
+        assert self.cluster.subclusters[0].vector_count == 2
+        assert len(self.cluster.subclusters[0].vectors) == 2
+
+
+    def test_merge_subclusters_connections(self):
         """Test that we can merge subclusters that have external edges."""
         new_vector_1 = self.random_vec()
         new_subcluster_1 = Subcluster(new_vector_1, store_vectors=True)
+        self.cluster.add_subcluster(new_subcluster_1)
         new_vector_2 = self.random_vec()
         new_subcluster_2 = Subcluster(new_vector_2, store_vectors=True)
+        self.cluster.add_subcluster(new_subcluster_2)
+
         new_subcluster_1.connected_subclusters.update(
-            {new_subcluster_2, self.subcluster})
+            {new_subcluster_2, self.cluster.subclusters[0]})
         new_subcluster_2.connected_subclusters.update(
-            {new_subcluster_1, self.subcluster})
-        self.subcluster.connected_subclusters.update(
+            {new_subcluster_1, self.cluster.subclusters[0]})
+        self.cluster.subclusters[0].connected_subclusters.update(
             {new_subcluster_1, new_subcluster_2})
-        self.subcluster.merge(new_subcluster_2)
-        assert self.subcluster.vector_count == 2
-        assert len(self.subcluster.vectors) == 2
-        assert len(self.subcluster.connected_subclusters) == 1
-        assert self.subcluster.connected_subclusters == {new_subcluster_1}
+        
+        self.cluster.merge_subclusters(0, 2)
+        assert len(self.cluster.subclusters) == 2
+        assert self.cluster.subclusters[0].vector_count == 2
+        assert len(self.cluster.subclusters[0].vectors) == 2
+        assert len(self.cluster.subclusters[0].connected_subclusters) == 1
+        assert self.cluster.subclusters[0].connected_subclusters == {new_subcluster_1}
