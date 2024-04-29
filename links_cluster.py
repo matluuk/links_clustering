@@ -20,7 +20,6 @@ class Subcluster:
     """Class for subclusters and edges between subclusters."""
 
     def __init__(self, initial_vector: np.ndarray, store_vectors: bool=False, logger=logging.getLogger()):
-        self.id = str(uuid.uuid4())
         self.logger = logger
 
         self.vectors = [initial_vector]
@@ -39,37 +38,6 @@ class Subcluster:
         }
         self.conversations: List[Dict] = []
         self.total_time_on_camera = 0
-    
-    @classmethod
-    def from_dict(cls, subcluster_dict, logger=logging.getLogger()):
-
-        subcluster = cls(initial_vector=[], logger=logger)
-
-        logger.info(f"subcluster_dict-type={type(subcluster_dict)}")
-        logger.info(f"subcluster_dict={subcluster_dict}")
-
-        logger.info(f"subcluster_dict['id']-type={type(subcluster_dict['id'])}")
-        logger.info(f"subcluster_dict['id']={subcluster_dict['id']}")
-
-        # Set all parameters
-        subcluster.id = subcluster_dict["id"]
-        subcluster.vectors = subcluster_dict["vectors"]
-        subcluster.centroid = subcluster_dict["centroid"]
-        subcluster.vector_count = subcluster_dict["vector_count"]
-        subcluster.store_vectors = subcluster_dict["store_vectors"]
-        subcluster.connected_subclusters = set() # TODO
-
-        # information, when this identity is seen
-        subcluster.last_seen = subcluster_dict["last_seen"]
-        subcluster.current_conversation = {
-            "start_time": subcluster_dict["conv_start_time"],
-            "end_time": subcluster_dict["conv_end_time"],
-            "duration": subcluster_dict["conv_duration"],
-        }
-        subcluster.conversations = subcluster_dict["previous_convs"]
-        subcluster.total_time_on_camera = subcluster_dict["total_time_on_camera"]
-
-        return subcluster
 
     def add(self, vector: np.ndarray):
         """Add a new vector to the subcluster, update the centroid."""
@@ -83,11 +51,6 @@ class Subcluster:
                             self.vector_count * self.centroid \
                             + vector / self.vector_count
 
-            # for i in range(len(self.centroid)):
-            #     self.centroid[i] = (self.vector_count - 1) / self.vector_count * self.centroid[i] + vector[i] / self.vector_count
-            
-            # self.centroid = [[(self.vector_count - 1) / self.vector_count * n + m / self.vector_count for m in second] for n, second in zip(vector, self.centroid)]
-        
         # Update time, when seen
         now = time.time()
         if now - self.last_seen <= CONVERSATION_TRESHOLD:
@@ -129,8 +92,7 @@ class Cluster:
     def as_dict(self):
         return {
             "id": self.id,
-            "subclusters" : [subcluster.as_dict() for subcluster in self.subclusters],
-            "conversations": self.calculate_conversation_list()
+            "conversations": self.calculate_conversation_list(),
         }
 
     def merge_subclusters(self, sc_idx1, sc_idx2, delete_merged: bool = True):
