@@ -13,7 +13,7 @@ from typing import List, Dict
 import numpy as np
 from scipy.spatial.distance import cosine
 
-CONVERSATION_TRASHOLD = 30  # Threshold value to determine that two conversations is same (s)
+CONVERSATION_TRESHOLD = 30  # Threshold value to determine that two conversations is same (s)
 CONVERSATION_MINIMUM_LENGTH = 1  # Minimum lenght of conversation
 
 class Subcluster:
@@ -90,7 +90,7 @@ class Subcluster:
         
         # Update time, when seen
         now = time.time()
-        if now - self.last_seen <= CONVERSATION_TRASHOLD:
+        if now - self.last_seen <= CONVERSATION_TRESHOLD:
             # Determine, that conversation is still going
             self.current_conversation["end_time"] = now 
             self.current_conversation["duration"] = self.current_conversation["end_time"] - self.current_conversation["start_time"]
@@ -161,9 +161,6 @@ class Cluster:
 
         self.id = str(uuid.uuid4())
 
-        # TODO: Add time metrics
-        self.conversations: List[Dict] = []
-
     @classmethod
     def from_dict(cls, dict, logger=logging.getLogger()):
         cluster = cls(subcluster=None, logger=logger)
@@ -178,6 +175,7 @@ class Cluster:
         return {
             "id": self.id,
             "subclusters" : [subcluster.as_dict() for subcluster in self.subclusters],
+            "conversations": self.calculate_conversation_list()
         }
 
     def merge_subclusters(self, sc_idx1, sc_idx2, delete_merged: bool = True):
@@ -233,11 +231,11 @@ class Cluster:
         if delete_merged:
             del sc_2
 
-    def calculate_time_info(self):
+    def calculate_conversation_list(self):
         """
         Calculate conversation times from subclusters conversation info!
         """
-        self.conversations = self.__combine_conversation_lists([sc.conversations for sc in self.subclusters])
+        return self.__combine_conversation_lists([sc.conversations for sc in self.subclusters])
 
     @staticmethod
     def __combine_conversation_lists(conversation_lists: list):
@@ -250,7 +248,7 @@ class Cluster:
     
         merged = []
         for conv in conversations:
-            if not merged or conv["start_time"] >= merged[-1]["end_time"] + CONVERSATION_TRASHOLD:
+            if not merged or conv["start_time"] >= merged[-1]["end_time"] + CONVERSATION_TRESHOLD:
                 # No overlap, add directly
                 merged.append(conv)
             else:

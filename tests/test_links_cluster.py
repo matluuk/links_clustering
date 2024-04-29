@@ -4,7 +4,7 @@
 import numpy as np
 import random
 
-from links_cluster import LinksCluster, Subcluster, CONVERSATION_TRASHOLD
+from links_cluster import LinksCluster, Subcluster, CONVERSATION_TRESHOLD
 
 
 class TestLinksCluster:
@@ -242,14 +242,12 @@ class TestLinksCluster:
         self.cluster.clusters[0].subclusters[0].conversations = conversation_list
         self.cluster.clusters[0].subclusters[1].conversations = conversation_list_2
         
-        self.cluster.clusters[0].calculate_time_info()
-
-        convs = self.cluster.clusters[0].conversations
+        convs = self.cluster.clusters[0].calculate_conversation_list()
         convs_sorted = sorted(convs, key=lambda x: x["start_time"])
         assert convs != []
         assert convs == convs_sorted
         for i in range(1, len(convs)):
-            assert convs[i]["start_time"] > convs[i - 1]["end_time"] + CONVERSATION_TRASHOLD
+            assert convs[i]["start_time"] >= convs[i - 1]["end_time"] + CONVERSATION_TRESHOLD
     
     def test_merge_subclusters_times_overlapping(self):
         """
