@@ -108,51 +108,6 @@ class Subcluster:
 
         self.last_seen = now
 
-    def merge(self,
-              subcluster_merge: 'Subcluster',
-              delete_merged: bool = True):
-        """Merge subcluster_merge into self. Update centroids."""
-        if self.store_vectors:
-            self.vectors += subcluster_merge.vectors
-
-        # Update centroid and vector_count
-        self.centroid = self.vector_count * self.centroid \
-            + subcluster_merge.vector_count \
-            * subcluster_merge.centroid
-        self.centroid /= self.vector_count + subcluster_merge.vector_count
-        self.vector_count += subcluster_merge.vector_count
-        try:
-            subcluster_merge.connected_subclusters.remove(self)
-            self.connected_subclusters.remove(subcluster_merge)
-        except KeyError:
-            self.logger.warning("Attempted to merge unconnected subclusters. "
-                            "Merging anyway.")
-        for sc in subcluster_merge.connected_subclusters:
-            sc.connected_subclusters.remove(subcluster_merge)
-            if self not in sc.connected_subclusters and sc != self:
-                sc.connected_subclusters.update({self})
-        self.connected_subclusters.update(subcluster_merge.connected_subclusters)
-        # TODO: merge conversations list and current_conversation
-
-        if delete_merged:
-            del subcluster_merge
-    
-    def as_dict(self):
-        return {
-            "id": self.id,
-            "vectors": self.vectors,
-            "centroid": self.centroid,
-            "vector_count": self.vector_count,
-            "store_vectors": self.store_vectors,
-            "connected_subclusters": [c.id for c in self.connected_subclusters],
-            "last_seen": self.last_seen,
-            "conv_start_time": self.current_conversation["start_time"],
-            "conv_end_time": self.current_conversation["end_time"],
-            "conv_duration": self.current_conversation["duration"],
-            "previous_convs": self.conversations,
-            "total_time_on_camera": self.total_time_on_camera,
-        }
-
 class Cluster:
     """Class for clusters"""
     def __init__(self, subcluster: Subcluster, logger=logging.getLogger()):
@@ -229,7 +184,11 @@ class Cluster:
                 sc_1.conversations.append(conv_older)
 
         if delete_merged:
-            del sc_2
+            self.subclusters = self.subclusters[:sc_idx2] \
+                + self.subclusters[sc_idx2 + 1:]
+            for sc in self.subclusters:
+                if sc_2 in sc.connected_subclusters:
+                    sc.connected_subclusters.remove(sc_2)
 
     def calculate_conversation_list(self):
         """
@@ -357,13 +316,12 @@ class LinksCluster:
         sc2 = self.clusters[cl_idx].subclusters[sc_idx2]
 
         self.clusters[cl_idx].merge_subclusters(sc_idx1, sc_idx2)
-        # self.clusters[cl_idx].subclusters[sc_idx1].merge(sc2)
         self.update_cluster(cl_idx, sc_idx1)
-        self.clusters[cl_idx].subclusters = self.clusters[cl_idx].subclusters[:sc_idx2] \
-            + self.clusters[cl_idx].subclusters[sc_idx2 + 1:]
-        for sc in self.clusters[cl_idx].subclusters:
-            if sc2 in sc.connected_subclusters:
-                sc.connected_subclusters.remove(sc2)
+        # self.clusters[cl_idx].subclusters = self.clusters[cl_idx].subclusters[:sc_idx2] \
+        #     + self.clusters[cl_idx].subclusters[sc_idx2 + 1:]
+        # for sc in self.clusters[cl_idx].subclusters:
+        #     if sc2 in sc.connected_subclusters:
+        #         sc.connected_subclusters.remove(sc2)
 
     def update_cluster(self, cl_idx: int, sc_idx: int):
         """Update cluster
